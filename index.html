@@ -1,0 +1,338 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070707">
+<link rel="icon" type="image/jpeg" href="logo.jpg">
+<link rel="apple-touch-icon" href="logo.jpg">
+<title>Отметка посещения</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#070707; --card:#101010; --card2:#0b0b0b; --line:#222; --line2:#2c2c2c;
+    --text:#f2f2f2; --muted:#8a8a8a; --dim:#5a5a5a;
+    --red:#ff3d00; --red2:#ff5a26; --redglow:rgba(255,61,0,.35);
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body {
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px;
+    font-family:Manrope, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color:var(--text);
+    background:
+      radial-gradient(900px 500px at 50% -15%, rgba(255,61,0,.28), transparent 60%),
+      radial-gradient(600px 400px at 110% 110%, rgba(255,61,0,.12), transparent 60%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+  }
+  .card {
+    position:relative; width:100%; max-width:430px; padding:32px 28px 28px; border-radius:22px;
+    background:linear-gradient(180deg, #151515 0%, var(--card) 40%, var(--card2) 100%);
+    border:1px solid var(--line);
+    box-shadow:0 40px 100px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04);
+    overflow:hidden;
+  }
+  .card::before {
+    content:""; position:absolute; left:0; right:0; top:0; height:3px;
+    background:linear-gradient(90deg, transparent, var(--red) 20%, var(--red2) 50%, var(--red) 80%, transparent);
+  }
+  .brand { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--red2); margin-bottom:18px; }
+  .logo { width:44px; height:44px; flex:none; background:#0a0a0a url(logo.jpg) center/175% no-repeat; box-shadow:0 0 0 1px #262626, 0 8px 24px rgba(0,0,0,.5); }
+  h1 { font-family:Unbounded, Manrope, sans-serif; font-weight:700; font-size:26px; line-height:1.15; margin:0 0 8px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin:0 0 26px; font-size:14px; line-height:1.5; }
+  .sub b { color:var(--text); font-weight:600; }
+
+  label { display:block; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:18px 0 8px; }
+  input {
+    width:100%; padding:15px 16px; font:500 16px Manrope, sans-serif; color:var(--text);
+    background:#080808; border:1px solid var(--line2); border-radius:12px; transition:border-color .2s, box-shadow .2s;
+  }
+  input::placeholder { color:var(--dim); }
+  input:focus { outline:none; border-color:var(--red); box-shadow:0 0 0 4px rgba(255,61,0,.15); }
+
+  .panel { margin-top:22px; border:1px solid var(--line); border-radius:14px; background:#0a0a0a; overflow:hidden; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 16px; font-size:14px; }
+  .row + .row { border-top:1px solid var(--line); }
+  .row .k { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+  .row .v { font-weight:600; text-align:right; word-break:break-word; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--dim); flex:none; }
+  .dot.live { background:var(--red); box-shadow:0 0 10px var(--red); }
+  .dot.wait { animation:blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity:.25; } }
+  .warn { padding:13px 16px; border-top:1px solid rgba(255,61,0,.35); background:rgba(255,61,0,.08); color:#ff8a8a; font-size:13px; line-height:1.55; }
+  .warn strong { color:var(--red2); display:block; margin-bottom:4px; }
+
+  button {
+    margin-top:24px; width:100%; padding:16px; border:0; border-radius:12px; cursor:pointer;
+    font:700 14px Manrope, sans-serif; letter-spacing:.16em; text-transform:uppercase; color:#fff;
+    background:linear-gradient(180deg, var(--red2), var(--red) 55%, #c42e00);
+    box-shadow:0 12px 34px var(--redglow), inset 0 1px 0 rgba(255,255,255,.25);
+    transition:transform .15s, box-shadow .2s, filter .2s;
+  }
+  button:hover { filter:brightness(1.08); box-shadow:0 16px 44px rgba(255,61,0,.5), inset 0 1px 0 rgba(255,255,255,.25); }
+  button:active { transform:translateY(1px); }
+  button:disabled { filter:grayscale(.6) brightness(.6); cursor:default; box-shadow:none; }
+  .msg { margin-top:16px; font-size:13px; text-align:center; min-height:18px; color:var(--muted); line-height:1.5; }
+  .msg.err { color:#ff6b6b; }
+
+  /* Экран запроса геолокации */
+  .gate { text-align:center; padding:6px 0 4px; }
+  .radar { position:relative; width:120px; height:120px; margin:4px auto 26px; }
+  .radar i { position:absolute; inset:0; border-radius:50%; border:1px solid var(--red); opacity:0; animation:ring 2.4s cubic-bezier(.2,.6,.3,1) infinite; }
+  .radar i:nth-child(2) { animation-delay:.8s; } .radar i:nth-child(3) { animation-delay:1.6s; }
+  .radar b { position:absolute; left:50%; top:50%; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%; background:var(--red); box-shadow:0 0 0 6px rgba(255,61,0,.18), 0 0 30px var(--red); }
+  .radar.off i { animation:none; opacity:.15; } .radar.off b { background:#3a3a3a; box-shadow:none; }
+  @keyframes ring { 0% { transform:scale(.2); opacity:.9; } 100% { transform:scale(1); opacity:0; } }
+  .gate p { color:var(--muted); font-size:14px; line-height:1.6; margin:0; }
+  .gate p b { color:var(--text); }
+  .gate small { display:block; margin-top:12px; color:var(--dim); font-size:12px; }
+
+  /* Успех */
+  .done { text-align:center; padding:10px 0 6px; }
+  .check { width:92px; height:92px; margin:6px auto 22px; border-radius:50%; display:grid; place-items:center;
+           background:radial-gradient(circle, rgba(255,61,0,.25), rgba(255,61,0,.05) 70%); border:1px solid rgba(255,61,0,.5); box-shadow:0 0 50px rgba(255,61,0,.35); }
+  .check svg path { stroke:var(--red2); stroke-width:4; fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:50; stroke-dashoffset:50; animation:draw .6s .15s ease-out forwards; }
+  @keyframes draw { to { stroke-dashoffset:0; } }
+  .done .name { font-family:Unbounded, sans-serif; font-size:18px; margin:14px 0 4px; }
+  .done .time { color:var(--muted); font-size:13px; letter-spacing:.06em; }
+
+  .hidden { display:none !important; }
+  @media (max-width:420px) { .card { padding:28px 20px 22px; } h1 { font-size:23px; } }
+</style>
+</head>
+<body>
+<main class="card" id="card">
+  <div class="brand"><span class="logo"></span>Посещаемость</div>
+  <h1>Отметка посещения</h1>
+  <p class="sub" id="placeLabel">Введите имя и фамилию. Местоположение и устройство определяются автоматически.</p>
+
+  <div id="geoGate" class="gate">
+    <div class="radar" id="radar"><i></i><i></i><i></i><b></b></div>
+    <p id="geoGateText">Определяем местоположение.<br>Нажмите <b>«Разрешить»</b> в окне браузера.</p>
+    <button id="geoRetry" type="button" class="hidden">Повторить</button>
+  </div>
+
+  <form id="form" autocomplete="on" class="hidden">
+    <label for="first">Имя</label>
+    <input id="first" name="given-name" autocomplete="given-name" placeholder="Иван" required maxlength="100">
+    <label for="last">Фамилия</label>
+    <input id="last" name="family-name" autocomplete="family-name" placeholder="Иванов" required maxlength="100">
+
+    <div class="panel">
+      <div class="row"><span class="k"><span class="dot wait" id="devDot"></span>Устройство</span><span class="v" id="device">определяется…</span></div>
+      <div class="row"><span class="k"><span class="dot wait" id="geoDot"></span>Координаты</span><span class="v" id="geo">ожидание…</span></div>
+      <div class="row"><span class="k"><span class="dot wait" id="accDot"></span>Точность</span><span class="v" id="acc">—</span></div>
+      <div id="geoWarn" class="warn hidden">
+        <strong>Низкая точность — нужно не хуже ±200 м</strong>
+        Включите GPS и точную геолокацию.<br>
+        iPhone: Настройки → Конфиденциальность → Службы геолокации → Safari → «Точная геолокация».<br>
+        Android: Настройки → Местоположение → «Точность определения местоположения».
+      </div>
+    </div>
+
+    <button id="btn" type="submit">Отметиться</button>
+    <div class="msg" id="msg"></div>
+  </form>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.APP_CONFIG;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const MAX_ACCURACY_M = 200; // максимальная допустимая погрешность геолокации, метры
+const place = new URLSearchParams(location.search).get("place");
+if (place) $("placeLabel").innerHTML = "Точка: <b>" + esc(place) + "</b>";
+
+// запоминаем имя на этом устройстве
+try {
+  $("first").value = localStorage.getItem("att_first") || "";
+  $("last").value  = localStorage.getItem("att_last")  || "";
+} catch {}
+
+function setDot(id, state) { $(id).className = "dot " + state; } // state: "live" | "wait" | ""
+
+// ---------- Определение устройства ----------
+async function detectDevice() {
+  const ua = navigator.userAgent;
+  let model = "";
+
+  // Chrome/Edge на Android отдают точную модель
+  if (navigator.userAgentData?.getHighEntropyValues) {
+    try {
+      const h = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+      if (h.model) model = h.model;
+      if (!model && h.platform) model = h.platform + (h.platformVersion ? " " + h.platformVersion.split(".")[0] : "");
+    } catch {}
+  }
+
+  if (!model) {
+    let m;
+    if (/iPhone/.test(ua)) model = "iPhone" + ((m = ua.match(/OS (\d+)_/)) ? " (iOS " + m[1] + ")" : "");
+    else if (/iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) model = "iPad";
+    else if ((m = ua.match(/Android [\d.]+; ([^;)]+)/))) model = m[1].replace(/ Build.*/, "").trim();
+    else if (/Android/.test(ua)) model = "Android";
+    else if (/Windows/.test(ua)) model = "Windows PC";
+    else if (/Macintosh/.test(ua)) model = "Mac";
+    else if (/Linux/.test(ua)) model = "Linux";
+    else model = "Неизвестно";
+  }
+
+  let browser = "";
+  if (/Edg\//.test(ua)) browser = "Edge";
+  else if (/OPR\//.test(ua)) browser = "Opera";
+  else if (/YaBrowser/.test(ua)) browser = "Яндекс";
+  else if (/SamsungBrowser/.test(ua)) browser = "Samsung Internet";
+  else if (/CriOS|Chrome\//.test(ua)) browser = "Chrome";
+  else if (/FxiOS|Firefox\//.test(ua)) browser = "Firefox";
+  else if (/Safari\//.test(ua)) browser = "Safari";
+
+  return browser ? `${model} · ${browser}` : model;
+}
+
+let deviceName = "";
+detectDevice().then(d => { deviceName = d; $("device").textContent = d; setDot("devDot", "live"); });
+
+// ---------- Геолокация ----------
+let coords = null;
+function requestGeo() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { $("geo").textContent = "не поддерживается"; return resolve(null); }
+    // Следим за позицией до 20 с и берём самую точную (GPS уточняется со временем)
+    let best = null, finished = false, watchId, timer;
+    setDot("accDot", "wait");
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      navigator.geolocation.clearWatch(watchId);
+      clearTimeout(timer);
+      if (best) coords = best;
+      if (best) setDot("accDot", best.acc <= MAX_ACCURACY_M ? "live" : "");
+      resolve(best);
+    };
+    const show = () => {
+      $("geo").textContent = `${best.lat.toFixed(5)}, ${best.lon.toFixed(5)}`;
+      $("acc").textContent = `±${Math.round(best.acc)} м`;
+      setDot("geoDot", "live");
+      $("geoWarn").classList.toggle("hidden", best.acc <= MAX_ACCURACY_M);
+      // открываем форму сразу после первых координат, уточнение идёт дальше в фоне
+      $("geoGate").classList.add("hidden");
+      $("form").classList.remove("hidden");
+    };
+    watchId = navigator.geolocation.watchPosition(
+      p => {
+        const c = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy };
+        if (!best || c.acc < best.acc) { best = c; coords = best; show(); }
+        if (best.acc <= 30) finish();               // достаточно точно — останавливаемся
+      },
+      e => {
+        if (best) return finish();
+        $("geo").textContent = e.code === 1 ? "доступ запрещён" : "не удалось определить";
+        finished = true;
+        navigator.geolocation.clearWatch(watchId);
+        clearTimeout(timer);
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+    timer = setTimeout(finish, 20000);
+  });
+}
+
+// Сразу при входе запрашиваем геолокацию; форма открывается только после разрешения
+async function geoGate() {
+  $("geoRetry").classList.add("hidden");
+  $("radar").classList.remove("off");
+  $("geoGateText").innerHTML = "Определяем местоположение.<br>Нажмите <b>«Разрешить»</b> в окне браузера.";
+  if (!window.isSecureContext) {
+    $("radar").classList.add("off");
+    $("geoGateText").textContent = "Геолокация работает только по HTTPS. Откройте сайт по защищённой ссылке.";
+    return;
+  }
+  const c = await requestGeo();
+  if (c) {
+    $("geoGate").classList.add("hidden");
+    $("form").classList.remove("hidden");
+    return;
+  }
+  $("radar").classList.add("off");
+  $("geoGateText").innerHTML = "<b>Без доступа к местоположению отметиться нельзя.</b><br><br>" +
+    "Нажмите на значок замка или «Аа» рядом с адресом сайта → Местоположение → Разрешить, затем нажмите «Повторить»." +
+    "<small>iPhone: Настройки → Конфиденциальность → Службы геолокации → Safari → «При использовании».</small>";
+  $("geoRetry").classList.remove("hidden");
+}
+$("geoRetry").onclick = geoGate;
+geoGate();
+
+// ---------- Отправка ----------
+$("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const first = $("first").value.trim(), last = $("last").value.trim();
+  if (!first || !last) return;
+
+  $("btn").disabled = true;
+  $("msg").className = "msg"; $("msg").textContent = "Отправка…";
+
+  if (!coords) await requestGeo();
+  if (!coords) {
+    $("msg").className = "msg err";
+    $("msg").textContent = "Нужно разрешить доступ к геолокации в настройках браузера и обновить страницу.";
+    $("btn").disabled = false;
+    return;
+  }
+  // Точность должна быть не хуже MAX_ACCURACY_M — иначе пробуем уточнить ещё раз
+  if (coords.acc > MAX_ACCURACY_M) {
+    $("msg").textContent = `Уточняем местоположение (сейчас ±${Math.round(coords.acc)} м)…`;
+    const prev = coords;
+    const better = await requestGeo();
+    coords = (better && better.acc < prev.acc) ? better : prev;
+  }
+  if (coords.acc > MAX_ACCURACY_M) {
+    $("msg").className = "msg err";
+    $("msg").textContent = `Слишком низкая точность: ±${Math.round(coords.acc)} м (нужно не хуже ${MAX_ACCURACY_M} м). ` +
+      "Включите GPS и точную геолокацию, подойдите ближе к окну и нажмите ещё раз.";
+    $("geoWarn").classList.remove("hidden");
+    $("btn").disabled = false;
+    return;
+  }
+
+  if (!deviceName) deviceName = await detectDevice();
+
+  const { error } = await sb.from("attendance").insert({
+    first_name: first,
+    last_name: last,
+    device_name: deviceName,
+    user_agent: navigator.userAgent.slice(0, 500),
+    latitude: coords.lat,
+    longitude: coords.lon,
+    accuracy_m: coords.acc,
+    place: place,
+  });
+
+  if (error) {
+    $("msg").className = "msg err";
+    $("msg").textContent = "Ошибка: " + error.message;
+    $("btn").disabled = false;
+    return;
+  }
+
+  try { localStorage.setItem("att_first", first); localStorage.setItem("att_last", last); } catch {}
+  const t = new Date().toLocaleString("ru-RU");
+  $("card").innerHTML = `
+    <div class="brand"><span class="logo"></span>Посещаемость</div>
+    <div class="done">
+      <div class="check"><svg width="44" height="44" viewBox="0 0 44 44"><path d="M11 23 l8 8 l15 -17"/></svg></div>
+      <h1>Вы отмечены</h1>
+      <div class="name">${esc(first)} ${esc(last)}</div>
+      <div class="time">${esc(t)}${place ? " · " + esc(place) : ""}</div>
+    </div>`;
+});
+</script>
+</body>
+</html>

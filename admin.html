@@ -1,0 +1,401 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#070707">
+<link rel="icon" type="image/jpeg" href="logo.jpg">
+<link rel="apple-touch-icon" href="logo.jpg">
+<title>Посещаемость — панель</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* Карта */
+  #map { height:440px; margin:0 -22px -22px; border-top:1px solid var(--line); }
+  .leaflet-container { background:#0a0a0a; font-family:Manrope, sans-serif; }  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:#111; color:#f2f2f2; border:1px solid #2c2c2c; box-shadow:0 12px 40px rgba(0,0,0,.6); }
+  .leaflet-popup-content-wrapper { border-radius:12px; }
+  .leaflet-popup-content { margin:12px 16px; font-size:13px; line-height:1.55; }
+  .leaflet-popup-content b { font-size:14px; }
+  .leaflet-popup-content .pm { color:#8a8a8a; }
+  .leaflet-container a.leaflet-popup-close-button { color:#8a8a8a; }
+  .leaflet-bar a { background:#111; color:#f2f2f2; border-bottom-color:#2c2c2c; }
+  .leaflet-bar a:hover { background:#1a1a1a; color:#ff5a26; }
+  .leaflet-bar { border:1px solid #2c2c2c !important; }
+  .leaflet-control-attribution { background:rgba(0,0,0,.65) !important; color:#666; }
+  .leaflet-control-attribution a { color:#888; }
+  input.pick { width:17px; height:17px; padding:0; accent-color:#ff3d00; cursor:pointer; vertical-align:middle; }
+  input.pick:disabled { cursor:not-allowed; opacity:.3; }
+  tbody tr.sel { background:rgba(255,61,0,.07); }
+  tbody tr { cursor:pointer; }
+</style>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#070707; --card:#0f0f0f; --line:#212121; --line2:#2c2c2c;
+    --text:#f2f2f2; --muted:#8a8a8a; --dim:#5a5a5a;
+    --red:#ff3d00; --red2:#ff5a26; --redglow:rgba(255,61,0,.35);
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; }
+  body {
+    min-height:100vh; padding:24px 16px 48px; color:var(--text);
+    font-family:Manrope, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1000px 420px at 50% -10%, rgba(255,61,0,.22), transparent 60%),
+      var(--bg);
+  }
+  .wrap { max-width:1180px; margin:0 auto; }
+
+  header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+  .brand { display:flex; align-items:center; gap:10px; font-size:11px; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--red2); margin-bottom:10px; }
+  .logo { width:44px; height:44px; flex:none; background:#0a0a0a url(logo.jpg) center/175% no-repeat; box-shadow:0 0 0 1px #262626, 0 8px 24px rgba(0,0,0,.5); }
+  h1 { font-family:Unbounded, Manrope, sans-serif; font-weight:700; font-size:30px; margin:0; letter-spacing:-.01em; }
+  h2 { font-family:Unbounded, Manrope, sans-serif; font-weight:500; font-size:16px; margin:0; letter-spacing:.01em; }
+
+  .card {
+    position:relative; background:linear-gradient(180deg, #141414, var(--card) 30%); border:1px solid var(--line);
+    border-radius:18px; padding:22px; margin-bottom:18px; box-shadow:0 30px 80px rgba(0,0,0,.5); overflow:hidden;
+  }
+  .card.accent::before { content:""; position:absolute; left:0; right:0; top:0; height:3px;
+    background:linear-gradient(90deg, transparent, var(--red) 20%, var(--red2) 50%, var(--red) 80%, transparent); }
+
+  input, select {
+    padding:12px 14px; font:500 14px Manrope, sans-serif; color:var(--text);
+    background:#080808; border:1px solid var(--line2); border-radius:10px; transition:border-color .2s, box-shadow .2s;
+  }
+  input::placeholder { color:var(--dim); }
+  input:focus { outline:none; border-color:var(--red); box-shadow:0 0 0 4px rgba(255,61,0,.15); }
+  input[type=date]::-webkit-calendar-picker-indicator { filter:invert(1) opacity(.6); }
+
+  button {
+    padding:12px 18px; border:0; border-radius:10px; cursor:pointer; white-space:nowrap;
+    font:700 12px Manrope, sans-serif; letter-spacing:.14em; text-transform:uppercase; color:#fff;
+    background:linear-gradient(180deg, var(--red2), var(--red) 55%, #c42e00);
+    box-shadow:0 10px 28px var(--redglow), inset 0 1px 0 rgba(255,255,255,.25); transition:filter .2s, transform .15s;
+  }
+  button:hover { filter:brightness(1.1); }
+  button:active { transform:translateY(1px); }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line2); box-shadow:none; }
+  button.ghost:hover { border-color:var(--red); color:var(--red2); filter:none; }
+  button.del { padding:6px 10px; font-size:10px; background:transparent; color:var(--dim); border:1px solid var(--line2); box-shadow:none; }
+  button.del:hover { color:var(--red2); border-color:var(--red); filter:none; }
+
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .muted { color:var(--muted); font-size:13px; }
+  .err { color:#ff6b6b; font-size:13px; margin-top:12px; }
+
+  /* Вход */
+  .login { max-width:420px; margin:10vh auto 0; padding:32px 28px; }
+  .login h1 { font-size:24px; margin-bottom:6px; }
+  .login p { color:var(--muted); font-size:14px; margin:0 0 22px; }
+  .login input, .login button { width:100%; }
+  .login input { margin-bottom:12px; padding:14px 16px; font-size:15px; }
+  .login button { margin-top:6px; padding:15px; }
+
+  /* Статистика */
+  .stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:18px; }
+  .stat { background:linear-gradient(180deg, #141414, var(--card)); border:1px solid var(--line); border-radius:16px; padding:18px 20px; }
+  .stat .k { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .stat .v { font-family:Unbounded, sans-serif; font-size:30px; font-weight:700; margin-top:8px; }
+  .stat .v.red { color:var(--red2); text-shadow:0 0 24px rgba(255,61,0,.45); }
+
+  /* QR */
+  .qrgrid { display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; }
+  .qrbox { background:#fff; padding:14px; border-radius:14px; box-shadow:0 0 0 1px var(--line), 0 0 60px rgba(255,61,0,.25); }
+  .qrbox canvas, .qrbox img { display:block; }
+  .url { margin-top:14px; font-size:12px; color:var(--muted); word-break:break-all; font-family:ui-monospace, Consolas, monospace; }
+
+  /* Таблица */
+  .toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .count { display:inline-block; margin-left:8px; padding:3px 10px; border-radius:999px; font:700 12px Manrope, sans-serif; color:var(--red2); background:rgba(255,61,0,.12); border:1px solid rgba(255,61,0,.35); vertical-align:middle; }
+  .tablewrap { overflow-x:auto; margin:0 -22px -22px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:14px 16px; white-space:nowrap; }
+  th { font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:#0a0a0a; }
+  th:first-child, td:first-child { padding-left:22px; } th:last-child, td:last-child { padding-right:22px; }
+  tbody tr { border-bottom:1px solid #181818; transition:background .15s; }
+  tbody tr:hover { background:rgba(255,61,0,.05); }
+  tbody tr.new { animation:flash 1.6s ease-out; }
+  @keyframes flash { from { background:rgba(255,61,0,.25); } to { background:transparent; } }
+  td.name { font-weight:700; }
+  td.dimc { color:var(--muted); }
+  td a { color:var(--red2); text-decoration:none; border-bottom:1px solid rgba(255,90,38,.3); }
+  td a:hover { border-bottom-color:var(--red2); }
+  .acc { display:inline-block; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:700; background:#161616; border:1px solid var(--line2); color:var(--muted); }
+  .acc.good { color:#fff; border-color:rgba(255,61,0,.5); background:rgba(255,61,0,.15); }
+  .empty { text-align:center; color:var(--dim); padding:40px 16px; }
+
+  .hidden { display:none !important; }
+  @media (max-width:720px) {
+    .stats { grid-template-columns:1fr 1fr; } .stats .stat:last-child { grid-column:1 / -1; }
+    .qrgrid { grid-template-columns:1fr; } .qrbox { justify-self:center; }
+    h1 { font-size:24px; }
+    .toolbar .row input { flex:1; min-width:0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Вход -->
+  <div class="card accent login" id="loginBox">
+    <div class="brand"><span class="logo"></span>Посещаемость</div>
+    <h1>Вход в панель</h1>
+    <p>Только для администраторов.</p>
+    <form id="loginForm">
+      <input id="email" type="email" placeholder="Email" required autocomplete="username">
+      <input id="pass" type="password" placeholder="Пароль" required autocomplete="current-password">
+      <button>Войти</button>
+    </form>
+    <div class="err" id="loginErr"></div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header>
+      <div>
+        <div class="brand"><span class="logo"></span>Посещаемость</div>
+        <h1>Панель отметок</h1>
+      </div>
+      <button class="ghost" id="logout">Выйти</button>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Сегодня</div><div class="v red" id="stToday">0</div></div>
+      <div class="stat"><div class="k">Уникальных сегодня</div><div class="v" id="stUnique">0</div></div>
+      <div class="stat"><div class="k">Всего записей</div><div class="v" id="stTotal">0</div></div>
+    </div>
+
+    <!-- QR -->
+    <div class="card accent">
+      <div class="qrgrid">
+        <div>
+          <h2>QR-код для отметки</h2>
+          <p class="muted" style="margin:8px 0 18px">Укажите название точки — оно будет сохраняться в каждой отметке, сделанной по этому коду.</p>
+          <div class="row">
+            <input id="placeInput" placeholder="Например: Аудитория 101" style="flex:1;min-width:200px">
+            <button id="genQr">Создать</button>
+            <button class="ghost" id="dlQr">Скачать PNG</button>
+          </div>
+          <div class="url" id="qrUrl"></div>
+        </div>
+        <div class="qrbox"><div id="qr"></div></div>
+      </div>
+    </div>
+
+    <!-- Карта -->
+    <div class="card">
+      <div class="toolbar">
+        <h2>Карта<span class="count" id="mapCount">0</span></h2>
+        <div class="row">
+          <button class="ghost" id="mapAll">Показать весь список</button>
+          <button class="ghost" id="mapClear">Очистить</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:-4px 0 16px">Отметьте нужные записи в таблице ниже — на карте появятся только они. Круг вокруг точки — погрешность геолокации.</p>
+      <div id="map"></div>
+    </div>
+
+    <!-- Таблица -->
+    <div class="card">
+      <div class="toolbar">
+        <h2>Отметки<span class="count" id="count">0</span></h2>
+        <div class="row">
+          <input type="date" id="dateFilter">
+          <input id="search" placeholder="Поиск по имени">
+          <button class="ghost" id="refresh">Обновить</button>
+          <button class="ghost" id="csv">CSV</button>
+        </div>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th title="Показать на карте">Карта</th><th>Время</th><th>Фамилия</th><th>Имя</th><th>Устройство</th><th>Точка</th><th>Координаты</th><th>Точность</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="config.js"></script>
+<script>
+const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.APP_CONFIG;
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+let data = [];
+let newIds = new Set();
+const selected = new Set();   // id записей, показанных на карте
+
+// ---------- Карта ----------
+const map = L.map("map", { zoomControl: true, attributionControl: true }).setView([30, 40], 2);
+// Тёмная карта Esri (без ключа): подложка + слой подписей
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
+L.tileLayer(ESRI + "World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+  attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", maxZoom: 16,
+}).addTo(map);
+L.tileLayer(ESRI + "World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", { maxZoom: 16 }).addTo(map);
+map.setMaxZoom(16);
+const markers = L.layerGroup().addTo(map);
+
+function drawMap(fit = true) {
+  markers.clearLayers();
+  const pts = [];
+  data.filter(r => selected.has(r.id) && r.latitude != null).forEach(r => {
+    const ll = [r.latitude, r.longitude];
+    pts.push(ll);
+    if (r.accuracy_m) L.circle(ll, { radius: r.accuracy_m, color: "#ff3d00", weight: 1, opacity: .6, fillOpacity: .08, interactive: false }).addTo(markers);
+    L.circleMarker(ll, { radius: 7, color: "#ffffff", weight: 2, fillColor: "#ff3d00", fillOpacity: 1 })
+      .bindPopup(`<b>${esc(r.last_name)} ${esc(r.first_name)}</b><br>
+        <span class="pm">${new Date(r.created_at).toLocaleString("ru-RU")}</span><br>
+        ${r.place ? esc(r.place) + "<br>" : ""}
+        <span class="pm">${esc(r.device_name)} · ±${Math.round(r.accuracy_m || 0)} м</span>`)
+      .bindTooltip(`${esc(r.last_name)} ${esc(r.first_name)}`, { direction: "top", offset: [0, -8] })
+      .addTo(markers);
+  });
+  $("mapCount").textContent = pts.length;
+  if (fit && pts.length) map.fitBounds(pts, { padding: [50, 50], maxZoom: 16 });
+}
+function toggleSelect(id, on) {
+  if (on) selected.add(id); else selected.delete(id);
+  const tr = document.querySelector(`tr[data-id="${id}"]`);
+  if (tr) { tr.classList.toggle("sel", on); tr.querySelector(".pick").checked = on; }
+  drawMap();
+}
+$("mapAll").onclick = () => { filtered().forEach(r => { if (r.latitude != null) selected.add(r.id); }); render(); drawMap(); };
+$("mapClear").onclick = () => { selected.clear(); render(); drawMap(false); };
+
+// ---------- Авторизация ----------
+async function showApp() {
+  const { data: { session } } = await sb.auth.getSession();
+  $("loginBox").classList.toggle("hidden", !!session);
+  $("app").classList.toggle("hidden", !session);
+  if (session) { makeQr(); load(); setTimeout(() => map.invalidateSize(), 50); }
+}
+$("loginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("loginErr").textContent = "";
+  const { error } = await sb.auth.signInWithPassword({ email: $("email").value, password: $("pass").value });
+  if (error) $("loginErr").textContent = error.message === "Invalid login credentials" ? "Неверный email или пароль" : error.message;
+  else showApp();
+});
+$("logout").onclick = async () => { await sb.auth.signOut(); showApp(); };
+
+// ---------- QR ----------
+function checkinUrl() {
+  const base = location.href.split("?")[0].split("#")[0].replace(/admin\.html$/, "index.html");
+  const p = $("placeInput").value.trim();
+  return p ? base + "?place=" + encodeURIComponent(p) : base;
+}
+function makeQr() {
+  const url = checkinUrl();
+  $("qr").innerHTML = "";
+  new QRCode($("qr"), { text: url, width: 200, height: 200, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+  $("qrUrl").textContent = url;
+}
+$("genQr").onclick = makeQr;
+$("dlQr").onclick = () => {
+  const c = $("qr").querySelector("canvas");
+  if (!c) return;
+  const a = document.createElement("a");
+  a.href = c.toDataURL("image/png");
+  a.download = "qr-" + ($("placeInput").value.trim() || "attendance") + ".png";
+  a.click();
+};
+
+// ---------- Данные ----------
+async function load() {
+  let q = sb.from("attendance").select("*").order("created_at", { ascending: false }).limit(1000);
+  const d = $("dateFilter").value;
+  if (d) {
+    const from = new Date(d + "T00:00:00"), to = new Date(from); to.setDate(to.getDate() + 1);
+    q = q.gte("created_at", from.toISOString()).lt("created_at", to.toISOString());
+  }
+  const { data: rows, error } = await q;
+  if (error) { $("rows").innerHTML = `<tr><td colspan="9" class="empty" style="color:#ff6b6b">${esc(error.message)}</td></tr>`; return; }
+  data = rows;
+  render();
+  drawMap(false);
+  loadStats();
+}
+async function loadStats() {
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const [{ count: total }, { data: today }] = await Promise.all([
+    sb.from("attendance").select("id", { count: "exact", head: true }),
+    sb.from("attendance").select("first_name,last_name").gte("created_at", start.toISOString()),
+  ]);
+  $("stTotal").textContent = total ?? 0;
+  $("stToday").textContent = today?.length ?? 0;
+  $("stUnique").textContent = new Set((today || []).map(r => (r.last_name + " " + r.first_name).toLowerCase())).size;
+}
+function filtered() {
+  const s = $("search").value.trim().toLowerCase();
+  return s ? data.filter(r => (r.first_name + " " + r.last_name).toLowerCase().includes(s)) : data;
+}
+function render() {
+  const rows = filtered();
+  $("count").textContent = rows.length;
+  $("rows").innerHTML = rows.map(r => {
+    const map = r.latitude != null
+      ? `<a href="https://www.google.com/maps?q=${r.latitude},${r.longitude}" target="_blank" rel="noopener">${r.latitude.toFixed(5)}, ${r.longitude.toFixed(5)}</a>` : "—";
+    const acc = r.accuracy_m != null
+      ? `<span class="acc ${r.accuracy_m <= 50 ? "good" : ""}">±${Math.round(r.accuracy_m)} м</span>` : "—";
+    const cls = [newIds.has(r.id) ? "new" : "", selected.has(r.id) ? "sel" : ""].join(" ");
+    return `<tr class="${cls}" data-id="${r.id}">
+      <td><input type="checkbox" class="pick" data-id="${r.id}" ${selected.has(r.id) ? "checked" : ""} ${r.latitude == null ? "disabled" : ""}></td>
+      <td class="dimc">${new Date(r.created_at).toLocaleString("ru-RU")}</td>
+      <td class="name">${esc(r.last_name)}</td><td>${esc(r.first_name)}</td>
+      <td class="dimc" title="${esc(r.user_agent)}">${esc(r.device_name)}</td>
+      <td>${esc(r.place) || '<span class="dimc">—</span>'}</td>
+      <td>${map}</td>
+      <td>${acc}</td>
+      <td><button class="del" data-del="${r.id}">Удалить</button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="9" class="empty">Нет записей</td></tr>`;
+  newIds.clear();
+}
+$("rows").addEventListener("click", async e => {
+  const delId = e.target.dataset.del;
+  if (delId) {
+    const { error } = await sb.from("attendance").delete().eq("id", delId);
+    if (!error) { selected.delete(Number(delId)); data = data.filter(r => r.id != delId); render(); drawMap(false); loadStats(); }
+    return;
+  }
+  if (e.target.closest("a")) return;              // ссылка на Google Maps
+  const tr = e.target.closest("tr[data-id]");
+  if (!tr) return;
+  const cb = tr.querySelector(".pick");
+  if (!cb || cb.disabled) return;
+  const id = Number(tr.dataset.id);
+  // клик по чекбоксу уже переключил его; клик по строке — переключаем сами
+  const on = e.target === cb ? cb.checked : !selected.has(id);
+  toggleSelect(id, on);
+});
+$("refresh").onclick = load;
+$("dateFilter").onchange = load;
+$("search").oninput = render;
+
+$("csv").onclick = () => {
+  const cols = ["created_at","last_name","first_name","device_name","place","latitude","longitude","accuracy_m"];
+  const lines = [cols.join(";")].concat(filtered().map(r => cols.map(c => `"${String(r[c] ?? "").replace(/"/g,'""')}"`).join(";")));
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "attendance.csv";
+  a.click();
+};
+
+// живое обновление
+sb.channel("att").on("postgres_changes", { event: "INSERT", schema: "public", table: "attendance" }, p => {
+  newIds.add(p.new.id);
+  data.unshift(p.new); render(); loadStats();
+}).subscribe();
+
+showApp();
+</script>
+</body>
+</html>
